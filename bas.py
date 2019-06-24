@@ -8,38 +8,52 @@ STRING = 2
 KEYWORD = 3
 OPERATOR = 4
 VARIABLE = 5
+COLON = 6
 
-keywords = [
-    'ABS(',
-    'ATN(',
-    'COS(',
-    'DATA',
-    'DEF',
-    'END',
-    'EXP(',
-    'FN',
-    'FOR',
-    'GOSUB',
-    'GOTO',
-    'IF',
-    'INPUT',
-    'INT(',
-    'LET',
-    'LIST',
-    'LOG(',
-    'NEW',
-    'NEXT',
-    'PRINT',
-    'REM',
-    'RETURN',
-    'RND(',
-    'SIN(',
-    'SQR(',
-    'STEP',
-    'TAN(',
-    'THEN',
-    'TO',
-]
+def doprnt():
+    t = next_token()
+    while t and t != ":":
+        if t.ttype == STRING:
+            print("%s" % t.tval, end="")
+        else:
+            print("{can't handle type %s}" % t.ttype, end="")
+
+        t = next_token()
+    print("")
+
+
+
+keywords = {
+    'ABS('      : None,
+    'ATN('      : None,
+    'COS('      : None,
+    'DATA'      : None,
+    'DEF'       : None,
+    'END'       : None,
+    'EXP('      : None,
+    'FN'        : None,
+    'FOR'       : None,
+    'GOSUB'     : None,
+    'GOTO'      : None,
+    'IF'        : None,
+    'INPUT'     : None,
+    'INT('      : None,
+    'LET'       : None,
+    'LIST'      : None,
+    'LOG('      : None,
+    'NEW'       : None,
+    'NEXT'      : None,
+    'PRINT'     : doprnt,
+    'REM'       : None,
+    'RETURN'    : None,
+    'RND('      : None,
+    'SIN('      : None,
+    'SQR('      : None,
+    'STEP'      : None,
+    'TAN('      : None,
+    'THEN'      : None,
+    'TO'        : None,
+}
 
 class Token():
     ttype = 0
@@ -82,6 +96,11 @@ def next_token():
     if not ch:
         return None
 
+    if lex == '?':
+        tok.ttype = KEYWORD
+        tok.tval = "PRINT"
+        return tok
+
     if lex >= '0' and lex <= '9':
         tok.ttype = NUMBER
         tok.tval = int(ch)
@@ -105,6 +124,11 @@ def next_token():
             unget_char()
         return tok
 
+    if lex == ':':
+        tok.ttype = COLON
+        tok.tval = lex
+        return tok
+
     if lex >= 'A' and lex <= 'Z':
         tok.ttype = VARIABLE
         tok.tval = "%s" % lex
@@ -119,7 +143,6 @@ def next_token():
             if ch == '(':
                 if tok.tval in keywords:
                     tok.ttype = KEYWORD
-                    tok.tval = keywords.index(tok.tval)
                     return tok
             ch = next_char()
             if ch:
@@ -128,18 +151,16 @@ def next_token():
             unget_char()
         if tok.tval in keywords:
             tok.ttype = KEYWORD
-            tok.tval = keywords.index(tok.tval)
         return tok
 
-    if lex == '(' or lex == ')' or lex == '+' or lex == '-' or lex == '*' or lex == '/':
+    if lex == '(' or lex == ')' or lex == '+' or lex == '-' or lex == '*' or lex == '/' or lex == '=':
         tok.ttype = OPERATOR
         tok.tval = lex
         return tok
 
     return None
 
-
-def parse(inp):
+def parsecheck(inp):
     start_line(inp)
     t = next_token()
     while t:
@@ -154,10 +175,53 @@ def parse(inp):
             print("[oper] %s" % t.tval)
         elif t.ttype == VARIABLE:
             print("[variable] %s" % t.tval)
+        elif t.ttype == COLON:
+            print("[colon]")
         else:
             print("syntax error?")
         t = next_token()
     return False
+
+def store_line(lineno):
+    # store or replace a line in internal memory
+    pass
+
+def eval_expression():
+    # whee this'll be fun
+    pass
+
+def exec_keyword(key):
+    # call keyword func
+    if keywords[key]:
+        keywords[key]()
+    else:
+        print("'%s' not yet implemented" % key)
+
+def parse(inp):
+    start_line(inp)
+    t = next_token()
+    while t:
+        if t.ttype == NUMBER:
+            while t.ttype == NUMBER:
+                store_line(t.tval)
+                start_line()
+                t = next_token()
+            continue
+
+        if t.ttype == VARIABLE:
+            value = eval_expression()
+            store_result(t.tval, value)
+            t = next_token()
+            continue
+
+        if t.ttype == KEYWORD:
+            exec_keyword(t.tval)
+            t = next_token()
+            continue
+
+        print("?syntax error")
+
+
 
 def handle_line(inp):
     while parse(inp):
@@ -166,7 +230,7 @@ def handle_line(inp):
 while True:
     print("Ready.")
     r = readline().strip()
-    if r.lower() == "end":
+    if r.lower() == "xxx":
         break
     cmd = handle_line(r)
 
