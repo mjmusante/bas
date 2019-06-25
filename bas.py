@@ -36,11 +36,11 @@ class DoPrnt(Brain):
         print("")
 
 operators = {
-    '(' : 0,
     '*' : 1,
     '/' : 1,
     '+' : 2,
-    '-' : 2
+    '-' : 2,
+    '(' : 3,
 }
 
 vars = dict()
@@ -247,6 +247,15 @@ def eval_expression(t):
         elif t.ttype == OPERATOR:
             if len(opr_stack) == 0:
                 opr_stack.append(t)
+                t = next_token()
+                continue
+            if t.tval == ')':
+                op = opr_stack.pop()
+                while op.tval != "(":
+                    a1 = val_stack.pop()
+                    a2 = val_stack.pop()
+                    val_stack.append(op_do(op, a1, a2))
+                    op = opr_stack.pop()
             else:
                 peek = opr_stack[len(opr_stack) - 1]
                 while peek.ttype == OPERATOR and operators[peek.tval] < operators[t.tval]:
