@@ -348,7 +348,10 @@ def handle_line(inp):
 
 while True:
     print("Ready.")
-    r = readline().strip()
+    r = readline()
+    if r == "":
+        sys.exit(0)
+    r.strip()
     if r.lower() == "x":
         break
     cmd = handle_line(r)
