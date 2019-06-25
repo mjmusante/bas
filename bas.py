@@ -242,6 +242,21 @@ def eval_expression(t):
     while t and t.ttype != COLON:
         if t.ttype == NUMBER:
             val_stack.append(t.tval)
+        elif t.ttype == OPERATOR and t.tval == '-':
+            t = next_token()
+            if t:
+                if t.ttype == NUMBER:
+                    val_stack.append(-t.tval)
+                elif t.ttype == VARIABLE:
+                    val_stack.append(-var_get(t.tval))
+                elif t.ttype == OPERATOR and t.tval == '(':
+                    val_stack.append(-eval_expression(t))
+                else:
+                    print("unexpected ttype %s/%s" % (t.ttype, t.tval))
+                    sys.exit(1)
+            else:
+                print("oops")
+                sys.exit(1)
         elif t.ttype == VARIABLE:
             val_stack.append(var_get(t.tval))
         elif t.ttype == OPERATOR:
