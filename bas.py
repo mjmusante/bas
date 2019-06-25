@@ -9,19 +9,41 @@ KEYWORD = 3
 OPERATOR = 4
 VARIABLE = 5
 COLON = 6
+FUNCTION = 7
 
-def doprnt():
-    t = next_token()
-    while t and t != ":":
-        if t.ttype == STRING:
-            print("%s" % t.tval, end="")
-        else:
-            print("{can't handle type %s}" % t.ttype, end="")
+class Brain:
+    def __init__(t_for):
+        self.t_for = t_for
 
+    def exec():
+        print("Not implemented")
+        sys.exit(1)
+
+
+class DoPrnt(Brain):
+    def __init__():
+        super(KEYWORD);
+
+    def exec():
         t = next_token()
-    print("")
+        while t and t != ":":
+            if t.ttype == STRING:
+                print("%s" % t.tval, end="")
+            else:
+                print("%s" % eval_expression(t), end="")
 
+            t = next_token()
+        print("")
 
+operators = {
+    '(' : 0,
+    '*' : 1,
+    '/' : 1,
+    '+' : 2,
+    '-' : 2
+}
+
+vars = dict()
 
 keywords = {
     'ABS('      : None,
@@ -43,7 +65,7 @@ keywords = {
     'LOG('      : None,
     'NEW'       : None,
     'NEXT'      : None,
-    'PRINT'     : doprnt,
+    'PRINT'     : DoPrnt,
     'REM'       : None,
     'RETURN'    : None,
     'RND('      : None,
@@ -101,8 +123,11 @@ def next_token():
         tok.tval = "PRINT"
         return tok
 
-    if lex >= '0' and lex <= '9':
+    if (lex >= '0' and lex <= '9'):
+        is_neg = False
         tok.ttype = NUMBER
+        if lex == '-':
+            is_neg = True
         tok.tval = int(ch)
         ch = next_char()
         while ch and ch >= '0' and ch <= '9':
@@ -111,6 +136,8 @@ def next_token():
             ch = next_char()
         if ch:
             unget_char()
+        if is_neg:
+            tok.tval = -tok.tval
         return tok
 
     if lex == '"':
@@ -186,14 +213,73 @@ def store_line(lineno):
     # store or replace a line in internal memory
     pass
 
-def eval_expression():
-    # whee this'll be fun
-    pass
+def var_get(v):
+    global vars
+    if v not in vars:
+        vars[v] = 0
+    return vars[v]
+
+def store_result(v, val):
+    global vars
+    vars[v] = val
+
+def op_do(opr, arg1, arg2):
+    if opr.tval == '+':
+        return arg1 + arg2
+    if opr.tval == '-':
+        return arg1 - arg2
+    if opr.tval == '*':
+        return arg1 * arg2
+    if opr.tval == '/':
+        return arg1 / arg2
+    print("opr %s unimplemented" % opr.tval)
+    sys.exit(1)
+
+def eval_expression(t):
+    opr_stack = list()
+    val_stack = list()
+
+    while t and t.ttype != COLON:
+        if t.ttype == NUMBER:
+            val_stack.append(t.tval)
+        elif t.ttype == VARIABLE:
+            val_stack.append(var_get(t.tval))
+        elif t.ttype == OPERATOR:
+            if len(opr_stack) == 0:
+                opr_stack.append(t)
+            else:
+                peek = opr_stack[len(opr_stack) - 1]
+                while peek.ttype == OPERATOR and operators[peek.tval] < operators[t.tval]:
+                    op = opr_stack.pop()
+                    a1 = val_stack.pop()
+                    a2 = val_stack.pop()
+                    val_stack.append(op_do(op, a1, a2))
+                    if len(opr_stack) == 0:
+                        break
+                    peek = opr_stack[len(opr_stack) - 1]
+                opr_stack.append(t)
+        elif t.ttype == FUNCTION:
+            t = next_token()
+            if not t:
+                print("ran out of tokens")
+                return NaN
+            val_stack.append(operators[t.tval].exec(eval_expression(t)))
+        t = next_token()
+
+    while len(opr_stack) > 0:
+        op = opr_stack.pop()
+        a1 = val_stack.pop()
+        a2 = val_stack.pop()
+        val_stack.append(op_do(op, a1, a2))
+    if len(opr_stack) != 0 or len(val_stack) != 1:
+        print("too many oprs(%s) or vals(%s)" % (len(opr_stack), len(val_stack)))
+        sys.exit(1)
+    return val_stack[0]
 
 def exec_keyword(key):
     # call keyword func
     if keywords[key]:
-        keywords[key]()
+        keywords[key].exec()
     else:
         print("'%s' not yet implemented" % key)
 
@@ -209,8 +295,17 @@ def parse(inp):
             continue
 
         if t.ttype == VARIABLE:
-            value = eval_expression()
-            store_result(t.tval, value)
+            varname = t.tval
+            t = next_token()
+            if t.ttype != OPERATOR or t.tval != '=':
+                print("?syntax error [%s]" % t.tval)
+                return None
+            t = next_token()
+            if not t:
+                print("?syntax error")
+                return None
+            value = eval_expression(t)
+            store_result(varname, value)
             t = next_token()
             continue
 
@@ -230,7 +325,7 @@ def handle_line(inp):
 while True:
     print("Ready.")
     r = readline().strip()
-    if r.lower() == "xxx":
+    if r.lower() == "x":
         break
     cmd = handle_line(r)
 
