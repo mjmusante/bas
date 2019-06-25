@@ -35,6 +35,22 @@ class DoPrnt(Brain):
             t = next_token()
         print("")
 
+class DoLet(Brain):
+    def __init__():
+        super(KEYWORD)
+
+    def exec():
+        t = next_token()
+        if not t or t.ttype != VARIABLE:
+            print("LET: expecting variable")
+            return
+        varname = t.tval
+        t = next_token()
+        if not t or t.ttype != OPERATOR or t.tval != '=':
+            print("LET: expecting '=' instead of {%s/%s}" % (t.ttype, t.tval))
+            return
+        store_result(varname, eval_expression(next_token()))
+
 operators = {
     '*' : 1,
     '/' : 1,
@@ -60,7 +76,7 @@ keywords = {
     'IF'        : None,
     'INPUT'     : None,
     'INT('      : None,
-    'LET'       : None,
+    'LET'       : DoLet,
     'LIST'      : None,
     'LOG('      : None,
     'NEW'       : None,
@@ -311,6 +327,7 @@ def parse(inp):
     start_line(inp)
     t = next_token()
     while t:
+        print("{%s/%s}" % (t.ttype, t.tval))
         if t.ttype == NUMBER:
             while t.ttype == NUMBER:
                 store_line(t.tval)
@@ -347,7 +364,8 @@ def handle_line(inp):
         pass
 
 while True:
-    print("Ready.")
+    if sys.stdin.isatty():
+        print("Ready.")
     r = readline()
     if r == "":
         sys.exit(0)
