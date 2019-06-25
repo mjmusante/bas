@@ -275,7 +275,7 @@ def eval_expression(t):
             val_stack.append(operators[t.tval].exec(eval_expression(t)))
         t = next_token()
 
-    while len(opr_stack) > 0:
+    while len(opr_stack) > 0 and len(val_stack) > 1:
         op = opr_stack.pop()
         a1 = val_stack.pop()
         a2 = val_stack.pop()
