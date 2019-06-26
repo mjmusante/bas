@@ -11,22 +11,34 @@ VARIABLE = 5
 COLON = 6
 FUNCTION = 7
 
-class Brain:
-    def __init__(t_for):
+class Brain(object):
+    def __init__(self, t_for):
         self.t_for = t_for
 
-    def exec():
+    def expect(self, ttype, tval=None):
+        t = next_token()
+        if not t:
+            return None
+        if t.ttype != ttype:
+            print("{expecting %s, got %s" % (ttype, t.ttype))
+            return None
+        if tval and tval != t.tval:
+            print("{expecting %s, got %s" % (tval, t.tval))
+            return None
+        return t
+
+    def exec(self):
         print("Not implemented")
         sys.exit(1)
 
 
 class DoPrnt(Brain):
-    def __init__():
-        super(KEYWORD);
+    def __init__(self):
+        super().__init__(KEYWORD);
 
-    def exec():
+    def exec(self):
         t = next_token()
-        while t and t != ":":
+        while t and t.ttype != COLON:
             if t.ttype == STRING:
                 print("%s" % t.tval, end="")
             else:
@@ -34,22 +46,24 @@ class DoPrnt(Brain):
 
             t = next_token()
         print("")
+        return True
 
 class DoLet(Brain):
-    def __init__():
-        super(KEYWORD)
+    def __init__(self):
+        super().__init__(KEYWORD)
 
-    def exec():
-        t = next_token()
-        if not t or t.ttype != VARIABLE:
-            print("LET: expecting variable")
-            return
-        varname = t.tval
-        t = next_token()
-        if not t or t.ttype != OPERATOR or t.tval != '=':
-            print("LET: expecting '=' instead of {%s/%s}" % (t.ttype, t.tval))
-            return
+    def exec(self, gotvar=None):
+        if not gotvar:
+            t = self.expect(VARIABLE)
+            if not t:
+                return False
+            varname = t.tval
+        else:
+            varname = gotvar.tval
+        if not self.expect(OPERATOR, '='):
+            return False
         store_result(varname, eval_expression(next_token()))
+        return True
 
 operators = {
     '*' : 1,
@@ -76,12 +90,12 @@ keywords = {
     'IF'        : None,
     'INPUT'     : None,
     'INT('      : None,
-    'LET'       : DoLet,
+    'LET'       : DoLet(),
     'LIST'      : None,
     'LOG('      : None,
     'NEW'       : None,
     'NEXT'      : None,
-    'PRINT'     : DoPrnt,
+    'PRINT'     : DoPrnt(),
     'REM'       : None,
     'RETURN'    : None,
     'RND('      : None,
@@ -100,6 +114,7 @@ class Token():
 d = list()
 curline = None
 curpos = 0
+untok = None
 
 def start_line(inp):
     global curline, curpos
@@ -119,6 +134,13 @@ def unget_char():
     curpos -= 1
 
 def next_token():
+    global untok
+
+    if untok:
+        tok = untok
+        untok = None
+        return tok
+
     tok = Token()
 
     ch = next_char()
@@ -203,6 +225,13 @@ def next_token():
 
     return None
 
+
+def unget_token(t):
+    global untok
+    assert(untok == None)
+    untok = t
+
+
 def parsecheck(inp):
     start_line(inp)
     t = next_token()
@@ -255,7 +284,7 @@ def eval_expression(t):
     opr_stack = list()
     val_stack = list()
 
-    while t and t.ttype != COLON:
+    while t:
         if t.ttype == NUMBER:
             val_stack.append(t.tval)
         elif t.ttype == OPERATOR and t.tval == '-':
@@ -304,6 +333,10 @@ def eval_expression(t):
                 print("ran out of tokens")
                 return NaN
             val_stack.append(operators[t.tval].exec(eval_expression(t)))
+        else:
+            unget_token(t)
+            break
+
         t = next_token()
 
     while len(opr_stack) > 0 and len(val_stack) > 1:
@@ -324,38 +357,36 @@ def exec_keyword(key):
         print("'%s' not yet implemented" % key)
 
 def parse(inp):
+    # all lines entered by the user will start with one of:
+    # - a keyword (e.g. list, print, run, &c)
+    # - a positive number (to insert a new line or replace an existing one)
+    # - a variable (as a shortcut for 'let')
+    # everything else is a syntax error
+    implied_let = DoLet()
     start_line(inp)
     t = next_token()
     while t:
-        print("{%s/%s}" % (t.ttype, t.tval))
-        if t.ttype == NUMBER:
-            while t.ttype == NUMBER:
-                store_line(t.tval)
-                start_line()
-                t = next_token()
-            continue
-
-        if t.ttype == VARIABLE:
-            varname = t.tval
-            t = next_token()
-            if t.ttype != OPERATOR or t.tval != '=':
-                print("?syntax error [%s]" % t.tval)
-                return None
-            t = next_token()
-            if not t:
-                print("?syntax error")
-                return None
-            value = eval_expression(t)
-            store_result(varname, value)
-            t = next_token()
-            continue
-
         if t.ttype == KEYWORD:
             exec_keyword(t.tval)
             t = next_token()
             continue
 
+        if t.ttype == NUMBER:
+            print("stored programs not supported yet")
+            return False
+
+        if t.ttype == VARIABLE:
+            if not implied_let.exec(t):
+                return False
+            t = next_token()
+            continue
+
+        if t.ttype == COLON:
+            t = next_token()
+            continue
+
         print("?syntax error")
+        return False
 
 
 
