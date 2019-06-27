@@ -185,7 +185,7 @@ def next_token():
         while ch and ch != '"':
             tok.tval += ch
             ch = next_char()
-        if ch:
+        if ch and ch != '"':
             unget_char()
         return tok
 
