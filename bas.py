@@ -66,11 +66,12 @@ class DoLet(Brain):
         return True
 
 operators = {
-    '*' : 1,
-    '/' : 1,
-    '+' : 2,
-    '-' : 2,
-    '(' : 3,
+    '!' : (0, False),    # internal "unary minus" operator
+    '*' : (1, True),
+    '/' : (1, True),
+    '+' : (2, True),
+    '-' : (2, True),
+    '(' : (3, True)
 }
 
 vars = dict()
@@ -277,76 +278,68 @@ def op_do(opr, arg1, arg2):
         return arg1 * arg2
     if opr.tval == '/':
         return arg1 / arg2
+    if opr.tval == '!':
+        return -arg1
     print("opr %s unimplemented" % opr.tval)
     sys.exit(1)
+
 
 def eval_expression(t):
     opr_stack = list()
     val_stack = list()
 
+    def apply_top_op():
+        topop = opr_stack.pop()
+        right = val_stack.pop()
+        if operators[topop.tval][1]:
+            left = val_stack.pop()
+            val_stack.append(op_do(topop, left, right))
+        else:
+            val_stack.append(op_do(topop, right, 0))
+
+    def push_opr(op):
+        while len(opr_stack) > 0:
+            peek = opr_stack[len(opr_stack) - 1]
+            if operators[peek.tval][0] < operators[op.tval][0]:
+                apply_top_op()
+            else:
+                break
+        opr_stack.append(op)
+
+    sawval = False
     while t:
         if t.ttype == NUMBER:
             val_stack.append(t.tval)
-        elif t.ttype == OPERATOR and t.tval == '-':
-            t = next_token()
-            if t:
-                if t.ttype == NUMBER:
-                    val_stack.append(-t.tval)
-                elif t.ttype == VARIABLE:
-                    val_stack.append(-var_get(t.tval))
-                elif t.ttype == OPERATOR and t.tval == '(':
-                    val_stack.append(-eval_expression(t))
-                else:
-                    print("unexpected ttype %s/%s" % (t.ttype, t.tval))
-                    sys.exit(1)
-            else:
-                print("oops")
-                sys.exit(1)
+            sawval = True
         elif t.ttype == VARIABLE:
             val_stack.append(var_get(t.tval))
+            sawval = True
+        elif t.ttype == OPERATOR and t.tval == '+':
+            if sawval:
+                push_opr(t)
+            sawval = False
+        elif t.ttype == OPERATOR and t.tval == '-':
+            if not sawval:
+                t.tval = '!'
+            push_opr(t)
+            sawval = False
         elif t.ttype == OPERATOR:
-            if len(opr_stack) == 0:
-                opr_stack.append(t)
-                t = next_token()
-                continue
-            if t.tval == ')':
-                op = opr_stack.pop()
-                while op.tval != "(":
-                    a1 = val_stack.pop()
-                    a2 = val_stack.pop()
-                    val_stack.append(op_do(op, a1, a2))
-                    op = opr_stack.pop()
-            else:
-                peek = opr_stack[len(opr_stack) - 1]
-                while peek.ttype == OPERATOR and operators[peek.tval] < operators[t.tval]:
-                    op = opr_stack.pop()
-                    a1 = val_stack.pop()
-                    a2 = val_stack.pop()
-                    val_stack.append(op_do(op, a1, a2))
-                    if len(opr_stack) == 0:
-                        break
-                    peek = opr_stack[len(opr_stack) - 1]
-                opr_stack.append(t)
+            push_opr(t)
         elif t.ttype == FUNCTION:
-            t = next_token()
-            if not t:
-                print("ran out of tokens")
-                return NaN
-            val_stack.append(operators[t.tval].exec(eval_expression(t)))
+            print("no functions implemented")
+            sys.exit(1)
         else:
-            unget_token(t)
             break
 
         t = next_token()
 
-    while len(opr_stack) > 0 and len(val_stack) > 1:
-        op = opr_stack.pop()
-        a1 = val_stack.pop()
-        a2 = val_stack.pop()
-        val_stack.append(op_do(op, a1, a2))
+    while len(opr_stack) > 0:
+        apply_top_op()
+
     if len(opr_stack) != 0 or len(val_stack) != 1:
         print("too many oprs(%s) or vals(%s)" % (len(opr_stack), len(val_stack)))
         sys.exit(1)
+
     return val_stack[0]
 
 def exec_keyword(key):
