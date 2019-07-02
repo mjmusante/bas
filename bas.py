@@ -71,7 +71,7 @@ operators = {
     '/' : (1, True),
     '+' : (2, True),
     '-' : (2, True),
-    '(' : (3, True)
+    '(' : (3, False)
 }
 
 vars = dict()
@@ -208,7 +208,7 @@ def next_token():
                 return tok
             if ch == '(':
                 if tok.tval in keywords:
-                    tok.ttype = KEYWORD
+                    tok.ttype = FUNCTION
                     return tok
             ch = next_char()
             if ch:
@@ -288,22 +288,20 @@ def eval_expression(t):
     opr_stack = list()
     val_stack = list()
 
-    def apply_top_op():
-        topop = opr_stack.pop()
+    def apply_op(op):
         right = val_stack.pop()
-        if operators[topop.tval][1]:
+        if operators[op.tval][1]:
             left = val_stack.pop()
-            val_stack.append(op_do(topop, left, right))
+            val_stack.append(op_do(op, left, right))
         else:
-            val_stack.append(op_do(topop, right, 0))
+            val_stack.append(op_do(op, right, 0))
 
     def push_opr(op):
         while len(opr_stack) > 0:
             peek = opr_stack[len(opr_stack) - 1]
-            if operators[peek.tval][0] < operators[op.tval][0]:
-                apply_top_op()
-            else:
+            if operators[peek.tval][0] > operators[op.tval][0]:
                 break
+            apply_op(opr_stack.pop())
         opr_stack.append(op)
 
     sawval = False
@@ -324,9 +322,29 @@ def eval_expression(t):
             push_opr(t)
             sawval = False
         elif t.ttype == OPERATOR:
-            push_opr(t)
+            if t.tval == '(':
+                opr_stack.append(t)
+                sawval = False
+            elif not sawval:
+                print("syntax error")
+                sys.exit(1)
+            elif t.tval == ')':
+                while len(opr_stack) > 0 and opr_stack[len(opr_stack) - 1] != '(':
+                    op = opr_stack.pop()
+                    if op.tval == '(':
+                        break
+                    apply_op(op)
+                if len(opr_stack) == 0:
+                    print("unbalanced parens")
+                    sys.exit(1)
+            else:
+                push_opr(t)
+                sawval = False
         elif t.ttype == FUNCTION:
-            print("no functions implemented")
+            func = keywords[t.tval]
+            if not func:
+                print("function not implemented")
+                sys.exit(1)
             sys.exit(1)
         else:
             break
@@ -334,9 +352,9 @@ def eval_expression(t):
         t = next_token()
 
     while len(opr_stack) > 0:
-        apply_top_op()
+        apply_op(opr_stack.pop())
 
-    if len(opr_stack) != 0 or len(val_stack) != 1:
+    if len(opr_stack) > 0 or len(val_stack) != 1:
         print("too many oprs(%s) or vals(%s)" % (len(opr_stack), len(val_stack)))
         sys.exit(1)
 
