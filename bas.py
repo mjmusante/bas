@@ -42,7 +42,7 @@ class DoPrnt(Brain):
             if t.ttype == STRING:
                 print("%s" % t.tval, end="")
             else:
-                print("%s" % eval_expression(t), end="")
+                print("%g" % eval_expression(t), end="")
 
             t = next_token()
         print("")
@@ -111,6 +111,21 @@ keywords = {
 class Token():
     ttype = 0
     tval = 0
+
+    def __str__(self):
+        if self.ttype == NUMBER or self.ttype == OPERATOR:
+            return "[Tok:%s]" % self.tval
+        elif self.ttype == STRING:
+            return "[Tok:\"%s\"]" % self.tval
+        elif self.ttype == KEYWORD:
+            return "[Tok:%s]" % keywords[self.tval]
+        elif self.ttype == VARIABLE:
+            return "[Tok:(%s=%s)]" % (self.tval, var_get(self.tval))
+        elif self.ttype == COLON:
+            return "[Tok:<colon>]"
+        elif self.ttype == FUNCTION:
+            return "[Tok:%s)]" % keywords[self.tval]
+
 
 d = list()
 curline = None
@@ -304,6 +319,13 @@ def eval_expression(t):
             apply_op(opr_stack.pop())
         opr_stack.append(op)
 
+    def dump_stack(title, stack):
+        print("%s:" % title, end="")
+        for s in stack:
+            print("%s" % s, end=" ")
+        print("")
+
+
     sawval = False
     while t:
         if t.ttype == NUMBER:
@@ -333,10 +355,10 @@ def eval_expression(t):
                     op = opr_stack.pop()
                     if op.tval == '(':
                         break
+                    if len(opr_stack) == 0:
+                        print("unbalanced parens")
+                        sys.exit(1)
                     apply_op(op)
-                if len(opr_stack) == 0:
-                    print("unbalanced parens")
-                    sys.exit(1)
             else:
                 push_opr(t)
                 sawval = False
