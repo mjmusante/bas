@@ -65,6 +65,16 @@ class DoLet(Brain):
         store_result(varname, eval_expression(next_token()))
         return True
 
+class DoAbs(Brain):
+    def __init__(self):
+        super().__init__(FUNCTION)
+
+    def exec(self, val):
+        if val > 0:
+            return val
+        return -val
+
+
 operators = {
     '!' : (0, False),    # internal "unary minus" operator
     '*' : (1, True),
@@ -77,7 +87,7 @@ operators = {
 vars = dict()
 
 keywords = {
-    'ABS('      : None,
+    'ABS('      : DoAbs(),
     'ATN('      : None,
     'COS('      : None,
     'DATA'      : None,
@@ -299,7 +309,7 @@ def op_do(opr, arg1, arg2):
     sys.exit(1)
 
 
-def eval_expression(t):
+def eval_expression(t, single=False):
     opr_stack = list()
     val_stack = list()
 
@@ -328,6 +338,8 @@ def eval_expression(t):
 
     sawval = False
     while t:
+        # dump_stack("v", val_stack)
+        # dump_stack("o", opr_stack)
         if t.ttype == NUMBER:
             val_stack.append(t.tval)
             sawval = True
@@ -348,7 +360,7 @@ def eval_expression(t):
                 opr_stack.append(t)
                 sawval = False
             elif not sawval:
-                print("syntax error")
+                print("sawval: syntax error")
                 sys.exit(1)
             elif t.tval == ')':
                 while len(opr_stack) > 0 and opr_stack[len(opr_stack) - 1] != '(':
@@ -359,6 +371,8 @@ def eval_expression(t):
                         print("unbalanced parens")
                         sys.exit(1)
                     apply_op(op)
+                if single and len(opr_stack) == 0 and len(val_stack) == 1:
+                    return val_stack[0]
             else:
                 push_opr(t)
                 sawval = False
@@ -367,7 +381,10 @@ def eval_expression(t):
             if not func:
                 print("function not implemented")
                 sys.exit(1)
-            sys.exit(1)
+            t.ttype = OPERATOR
+            t.tval = '('
+            val_stack.append(func.exec(eval_expression(t, True)))
+            sawval = True
         else:
             break
 
