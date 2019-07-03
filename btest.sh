@@ -33,3 +33,4 @@ testexpr 14 "a=-24:?-10-a" $LINENO
 
 testexpr 15 "?abs(-15)" $LINENO
 testexpr 16 "?3*abs(6)-abs(-2)" $LINENO
+testexpr 17 "?-abs((1+2)*3)+26" $LINENO
