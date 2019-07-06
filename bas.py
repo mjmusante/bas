@@ -11,6 +11,8 @@ VARIABLE = 5
 COLON = 6
 FUNCTION = 7
 
+prog = dict()
+
 class Brain(object):
     def __init__(self, t_for):
         self.t_for = t_for
@@ -20,10 +22,10 @@ class Brain(object):
         if not t:
             return None
         if t.ttype != ttype:
-            print("{expecting %s, got %s" % (ttype, t.ttype))
+            print("{expecting %s, got %s)" % (ttype, t.ttype))
             return None
         if tval and tval != t.tval:
-            print("{expecting %s, got %s" % (tval, t.tval))
+            print("{expecting %s, got %s)" % (tval, t.tval))
             return None
         return t
 
@@ -128,7 +130,7 @@ class Token():
         elif self.ttype == STRING:
             return "[Tok:\"%s\"]" % self.tval
         elif self.ttype == KEYWORD:
-            return "[Tok:%s]" % keywords[self.tval]
+            return "[Tok:%s]" % self.tval
         elif self.ttype == VARIABLE:
             return "[Tok:(%s=%s)]" % (self.tval, var_get(self.tval))
         elif self.ttype == COLON:
@@ -160,7 +162,7 @@ def unget_char():
     curpos -= 1
 
 def next_token():
-    global untok
+    global untok, totalt
 
     if untok:
         tok = untok
@@ -179,7 +181,7 @@ def next_token():
         ch = next_char()
         lex = ch.upper()
 
-    if not ch:
+    if not ch or ch == '\n':
         return None
 
     if lex == '?':
@@ -406,6 +408,15 @@ def exec_keyword(key):
     else:
         print("'%s' not yet implemented" % key)
 
+def add_line(linenum):
+    l = list()
+    t = next_token()
+    while t and t.ttype != COLON:
+        l.append(t)
+        print("%s" % t)
+        t = next_token()
+    prog[linenum] = l
+
 def parse(inp):
     # all lines entered by the user will start with one of:
     # - a keyword (e.g. list, print, run, &c)
@@ -422,8 +433,8 @@ def parse(inp):
             continue
 
         if t.ttype == NUMBER:
-            print("stored programs not supported yet")
-            return False
+            add_line(t.tval)
+            return True
 
         if t.ttype == VARIABLE:
             if not implied_let.exec(t):
@@ -442,15 +453,14 @@ def parse(inp):
 
 def handle_line(inp):
     while parse(inp):
-        pass
+        inp = readline().strip()
 
 while True:
     if sys.stdin.isatty():
         print("Ready.")
-    r = readline()
+    r = readline().strip()
     if r == "":
         sys.exit(0)
-    r.strip()
     if r.lower() == "x":
         break
     cmd = handle_line(r)
