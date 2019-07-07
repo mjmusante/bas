@@ -11,7 +11,7 @@ VARIABLE = 5
 COLON = 6
 FUNCTION = 7
 
-prog = dict()
+prog = list()
 
 class Brain(object):
     def __init__(self, t_for):
@@ -67,6 +67,30 @@ class DoLet(Brain):
         store_result(varname, eval_expression(next_token()))
         return True
 
+class DoList(Brain):
+    def __init__(self):
+        super().__init__(KEYWORD)
+
+    def exec(self):
+        global prog
+
+        for (ln, tlist) in prog:
+            print("%s" % ln, end="")
+            for t in tlist:
+                t.list_out()
+            print("")
+
+class DoRun(Brain):
+    def __init__(self):
+        super().__init__(KEYWORD)
+
+    def exec(self):
+        global prog
+
+        return None
+
+# ----------------------------------------------------------------------------
+
 class DoAbs(Brain):
     def __init__(self):
         super().__init__(FUNCTION)
@@ -76,6 +100,8 @@ class DoAbs(Brain):
             return val
         return -val
 
+
+# ----------------------------------------------------------------------------
 
 operators = {
     '!' : (0, False),    # internal "unary minus" operator
@@ -104,7 +130,7 @@ keywords = {
     'INPUT'     : None,
     'INT('      : None,
     'LET'       : DoLet(),
-    'LIST'      : None,
+    'LIST'      : DoList(),
     'LOG('      : None,
     'NEW'       : None,
     'NEXT'      : None,
@@ -112,6 +138,7 @@ keywords = {
     'REM'       : None,
     'RETURN'    : None,
     'RND('      : None,
+    'RUN'       : DoRun()
     'SIN('      : None,
     'SQR('      : None,
     'STEP'      : None,
@@ -123,6 +150,12 @@ keywords = {
 class Token():
     ttype = 0
     tval = 0
+
+    def list_out(self):
+        if self.ttype == NUMBER or self.ttype == OPERATOR:
+            print(" %s" % self.tval, end="")
+        elif self.ttype == KEYWORD:
+            print(" %s" % self.tval, end="")
 
     def __str__(self):
         if self.ttype == NUMBER or self.ttype == OPERATOR:
@@ -409,13 +442,16 @@ def exec_keyword(key):
         print("'%s' not yet implemented" % key)
 
 def add_line(linenum):
+    def linesort(x):
+        return x[0]
+
     l = list()
     t = next_token()
     while t and t.ttype != COLON:
         l.append(t)
-        print("%s" % t)
         t = next_token()
-    prog[linenum] = l
+    prog.append((linenum, l))
+    prog.sort(key=linesort)
 
 def parse(inp):
     # all lines entered by the user will start with one of:
